@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <!-- insert here the firebase sdk code-->
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js";
+        import { getMessaging, onMessage, getToken } from 'https://www.gstatic.com/firebasejs/9.6.10/firebase-messaging.js';
+        // TODO: Add SDKs for Firebase products that you want to use
+        // https://firebase.google.com/docs/web/setup#available-libraries
+        
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBY3HuwBFIbtg1ebz3uuq7MJf_qozsgoOM",
+            authDomain: "testfidecrm.firebaseapp.com",
+            projectId: "testfidecrm",
+            storageBucket: "testfidecrm.appspot.com",
+            messagingSenderId: "903419534281",
+            appId: "1:903419534281:web:c6999ad5d882239b026618",
+            measurementId: "G-PXJFEZJ9EY"
+        }
+      
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const messaging = getMessaging(app);
+
+        Notification.requestPermission(function (result) {
+            if (result == 'granted'){
+                subscribeUser();
+            }
+        });
+
+        //to get the client token
+
+        getToken(messaging, {vapidKey: 'BDB9s6rUByGcWSI9EAW9GsSJI-p9BZnj1nA6p-0-jiJKvrD5yz9qEgHnhfIH71naACdyubeVCO7B-7R9nFbmBHM'}).then((currentToken) => {
+            if (currentToken) {
+            console.log("token is ",currentToken);
+            //Send this token to your server and store it.
+            } else {
+            console.log('No registration token available. Request permission to generate one.');
+            }
+            }).catch((err) => {
+            console.log('An error occurred while retrieving token. ', err);
+        });
+        function urlBase64ToUint8Array(base64String) {
+            const padding = '='.repeat((4 - base64String.length % 4) % 4);
+            const base64 = (base64String + padding)
+            .replace(/-/g, '+')
+            .replace(/_/g, '/');
+        
+            const rawData = window.atob(base64);
+            const outputArray = new Uint8Array(rawData.length);
+        
+            for (let i = 0; i < rawData.length; ++i) {
+                outputArray[i] = rawData.charCodeAt(i);
+            }
+            return outputArray;
+        }
+        // receive the message in the foreground
+
+        function subscribeUser() {
+            navigator.serviceWorker.ready
+            .then(registration => {
+                registration.pushManager.getSubscription()
+                .then(pushSubscription => {
+                    if(!pushSubscription){
+                        //the user was never subscribed
+                        subscribe(registration);
+                    }
+                    else{
+                        //check if user was subscribed with a different key
+                        let json = pushSubscription.toJSON();
+                        let public_key = json.keys.p256dh;
+                        
+                        console.log(public_key);
+                        
+                        if(public_key != 'BDB9s6rUByGcWSI9EAW9GsSJI-p9BZnj1nA6p-0-jiJKvrD5yz9qEgHnhfIH71naACdyubeVCO7B-7R9nFbmBHM'){
+                            pushSubscription.unsubscribe().then(successful => {
+                                // You've successfully unsubscribed
+                                subscribe(registration);
+                            }).catch(e => {
+                                // Unsubscription failed
+                            })
+                        }
+                    }
+                });
+            })
+        }
+
+        function subscribe(registration){
+            registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array('BDB9s6rUByGcWSI9EAW9GsSJI-p9BZnj1nA6p-0-jiJKvrD5yz9qEgHnhfIH71naACdyubeVCO7B-7R9nFbmBHM')
+            })
+            .then(pushSubscription => {
+                //successfully subscribed to push
+                //save it to your DB etc....
+            });
+        }
+
+        /* if ('serviceWorker' in navigator) {
+            const register = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+                scope: '/'
+            });            
+            const subscription = await register.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: 'BDB9s6rUByGcWSI9EAW9GsSJI-p9BZnj1nA6p-0-jiJKvrD5yz9qEgHnhfIH71naACdyubeVCO7B-7R9nFbmBHM',
+            });
+
+        } else {
+            console.error('Service workers are not supported in this browser');
+        } */
+        /* self.registration.showNotification(data.title, data.text) */
+        onMessage(messaging, (payload)=>{
+            console.log('Message received', payload)
+        })
+      </script>
+</body>
+</html>
